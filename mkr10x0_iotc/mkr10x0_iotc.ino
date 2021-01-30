@@ -5,6 +5,8 @@
 // See the readme.md for details on connecting the sensor and setting up Azure IoT Central to recieve the data.
 */
 
+const short VERSION = 1;
+
 #include <stdarg.h>
 #include <time.h>
 #include <SPI.h>
@@ -13,8 +15,9 @@
 #define DEVICE_NAME "Arduino MKR1010"
 
 #include <ArduinoOTA.h>
+#include "secrets.h" 
 
-#include "arduino_secrets.h" 
+#include <ArduinoHttpClient.h>
 
 #include <WiFiUdp.h>
 #include <RTCZero.h>
@@ -100,6 +103,10 @@ NTP ntp(wifiUdp);
 // Create an rtc object
 RTCZero rtc;
 
+//TODO - Need to add appropriate SSL certs
+// WiFiClient    wifiClient;  // HTTP
+WiFiSSLClient wifiClientSSL;  // HTTPS
+
 #include "./iotc_dps.h"
 
 // get the time from NTP and set the real-time clock on the MKR10x0
@@ -148,6 +155,9 @@ void handleDirectMethod(String topicStr, String payloadStr) {
         const char* msg = json_object_get_string(root_obj, "displayedValue");
         morse_encodeAndFlash(msg);
         json_value_free(root_value);
+    }
+    if (strcmp(methodName.c_str(), "UPDATE") == 0){
+      handleSketchDownload()
     }
 }
 
@@ -280,6 +290,75 @@ void readSensors() {
     #endif
 }
 
+void handleSketchDownload() {
+  const char* SERVER = "www.my-hostname.it";  // Set your correct hostname
+  const unsigned short SERVER_PORT = 443;     // Commonly 80 (HTTP) | 443 (HTTPS)
+  const char* PATH = "/update-v%d.bin";       // Set the URI to the .bin firmware
+  const unsigned long CHECK_INTERVAL = 6000;  // Time interval between update checks (ms)
+
+  // Time interval check
+  static unsigned long previousMillis;
+  unsigned long currentMillis = millis();
+  if (currentMillis - previousMillis < CHECK_INTERVAL)
+    return;
+  previousMillis = currentMillis;
+
+  // HttpClient client(wifiClient, SERVER, SERVER_PORT);  // HTTP
+  HttpClient client(wifiClientSSL, SERVER, SERVER_PORT);  // HTTPS
+
+  char buff[32];
+  snprintf(buff, sizeof(buff), PATH, VERSION + 1);
+
+  Serial.print("Check for update file ");
+  Serial.println(buff);
+
+  // Make the GET request
+  client.get(buff);
+
+  int statusCode = client.responseStatusCode();
+  Serial.print("Update status code: ");
+  Serial.println(statusCode);
+  if (statusCode != 200) {
+    client.stop();
+    return;
+  }
+
+  long length = client.contentLength();
+  if (length == HttpClient::kNoContentLengthHeader) {
+    client.stop();
+    Serial.println("Server didn't provide Content-length header. Can't continue with update.");
+    return;
+  }
+  Serial.print("Server returned update file of size ");
+  Serial.print(length);
+  Serial.println(" bytes");
+
+  if (!InternalStorage.open(length)) {
+    client.stop();
+    Serial.println("There is not enough space to store the update. Can't continue with update.");
+    return;
+  }
+  byte b;
+  while (length > 0) {
+    if (!client.readBytes(&b, 1)) // reading a byte with timeout
+      break;
+    InternalStorage.write(b);
+    length--;
+  }
+  InternalStorage.close();
+  client.stop();
+  if (length > 0) {
+    Serial.print("Timeout downloading update file at ");
+    Serial.print(length);
+    Serial.println(" bytes. Can't continue with update.");
+    return;
+  }
+
+  Serial.println("Sketch update apply and reset.");
+  Serial.flush();
+  InternalStorage.apply(); // this doesn't return
+}
+
 void setup() {
     Serial.begin(115200);
 
@@ -301,6 +380,10 @@ void setup() {
         status = WiFi.begin(wifi_ssid, wifi_password);
         delay(1000);
     }
+
+    // start the WiFi OTA library with internal (flash) based storage
+    ArduinoOTA.begin(WiFi.localIP(), "Arduino", "password", InternalStorage);
+
 
     // get current UTC time
     getTime();
@@ -348,6 +431,10 @@ void setup() {
 
 // main processing loop
 void loop() {
+
+    // check for WiFi OTA updates
+    //ArduinoOTA.poll();
+  
     // give the MQTT handler time to do it's thing
     mqtt_client->loop();
 
