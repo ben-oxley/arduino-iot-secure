@@ -9,22 +9,17 @@
 #include <time.h>
 #include <SPI.h>
 
-// are we compiling against the Arduino MKR1000
-#if defined(ARDUINO_SAMD_MKR1000) && !defined(WIFI_101)
-#include <WiFi101.h>
-#define DEVICE_NAME "Arduino MKR1000"
-#endif
-
-// are we compiling against the Arduino MKR1010
-#ifdef ARDUINO_SAMD_MKRWIFI1010
 #include <WiFiNINA.h>
 #define DEVICE_NAME "Arduino MKR1010"
-#endif
+
+#include <ArduinoOTA.h>
+
+#include "arduino_secrets.h" 
 
 #include <WiFiUdp.h>
 #include <RTCZero.h>
 #include <SimpleDHT.h>
-
+#include <avr/dtostrf.h>
 /*  You need to go into this file and change this line from:
       #define MQTT_MAX_PACKET_SIZE 128
     to:
