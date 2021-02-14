@@ -79,4 +79,4 @@ jobs:
         with:
           name: dist
           path: |
-            $PWD/build
+            ./build
