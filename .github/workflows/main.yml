@@ -65,7 +65,7 @@ jobs:
           arduino-cli lib install "SparkFun ATECCX08a Arduino Library"
           
       - name: Configure MQTT Size
-        run: ((Get-Content -path "%HomePath%\Documents\Arduino\libraries\PubSubClient\src\PubSubClient.h" -Raw) -replace '#define MQTT_MAX_PACKET_SIZE 128','#define MQTT_MAX_PACKET_SIZE 2048') | Set-Content -Path "%HomePath%\Documents\Arduino\libraries\PubSubClient\src\PubSubClient.h"
+        run: ((Get-Content -path "~\Documents\Arduino\libraries\PubSubClient\src\PubSubClient.h" -Raw) -replace '#define MQTT_MAX_PACKET_SIZE 128','#define MQTT_MAX_PACKET_SIZE 2048') | Set-Content -Path "~\Documents\Arduino\libraries\PubSubClient\src\PubSubClient.h"
           
       - name: Create dummy secrets file
         run: cp ./src/secrets.default.h ./src/secrets.h
