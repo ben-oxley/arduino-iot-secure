@@ -67,9 +67,9 @@ jobs:
         run: cp ./src/secrets.default.h ./src/secrets.h
       
       - name: Create build folder
-        run: mkdir ~/build
+        run: mkdir ../build
  
       # Finally, we compile the sketch, using the FQBN that was set
       # in the build matrix.
       - name: Compile Sketch
-        run: arduino-cli compile --build-path ~/build -v --fqbn ${{ matrix.fqbn }} ./src
+        run: arduino-cli compile --build-path ../build -v --fqbn ${{ matrix.fqbn }} ./src
