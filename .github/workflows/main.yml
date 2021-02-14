@@ -73,3 +73,10 @@ jobs:
       # in the build matrix.
       - name: Compile Sketch
         run: arduino-cli compile --build-path $PWD/build -v --fqbn ${{ matrix.fqbn }} ./src
+        
+      - name: Archive production artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: dist
+          path: |
+            $PWD/build
