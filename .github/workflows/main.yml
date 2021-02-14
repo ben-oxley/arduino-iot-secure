@@ -69,4 +69,4 @@ jobs:
       # Finally, we compile the sketch, using the FQBN that was set
       # in the build matrix.
       - name: Compile Sketch
-        run: arduino-cli compile --build-path ./src/build -v --fqbn ${{ matrix.fqbn }} ./src
+        run: arduino-cli compile --build-path ./build -v --fqbn ${{ matrix.fqbn }} ./src
