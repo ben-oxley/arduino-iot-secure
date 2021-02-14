@@ -63,6 +63,7 @@ jobs:
           arduino-cli lib install PubSubClient
           arduino-cli lib install SimpleDHT
           arduino-cli lib install "SparkFun ATECCX08a Arduino Library"
+          arduino-cli lib install Arduino_LSM6DS3
           
       - name: Configure MQTT Size
         run: ((Get-Content -path "~\Documents\Arduino\libraries\PubSubClient\src\PubSubClient.h" -Raw) -replace '#define MQTT_MAX_PACKET_SIZE 128','#define MQTT_MAX_PACKET_SIZE 2048') | Set-Content -Path "~\Documents\Arduino\libraries\PubSubClient\src\PubSubClient.h"
