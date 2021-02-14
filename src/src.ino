@@ -157,7 +157,7 @@ void handleDirectMethod(String topicStr, String payloadStr) {
         json_value_free(root_value);
     }
     if (strcmp(methodName.c_str(), "UPDATE") == 0){
-      handleSketchDownload()
+      handleSketchDownload();
     }
 }
 
