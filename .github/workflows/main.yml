@@ -63,6 +63,8 @@ jobs:
           arduino-cli lib install PubSubClient
           arduino-cli lib install SimpleDHT
           
+      - name: Create dummy secrets file
+        run: cp ./src/secrets.default.h ./src/secrets.h
  
       # Finally, we compile the sketch, using the FQBN that was set
       # in the build matrix.
