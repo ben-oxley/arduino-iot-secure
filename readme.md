@@ -23,6 +23,7 @@ A fork of https://github.com/firedog1024/mkr1000-iotc intended to add in more se
 
 * OTA Updates will be based on Github Actions build
 * Storage of secrets in the IoT Nano 33 Microchip® ECC608 crypto chip
+* Validation of OTA download signature
 
 ## Installation
 
