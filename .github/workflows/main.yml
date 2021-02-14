@@ -62,6 +62,7 @@ jobs:
           arduino-cli lib install AzureIoTHub
           arduino-cli lib install PubSubClient
           arduino-cli lib install SimpleDHT
+          arduino-cli lib install "SparkFun ATECCX08a Arduino Library"
           
       - name: Create dummy secrets file
         run: cp ./src/secrets.default.h ./src/secrets.h
