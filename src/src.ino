@@ -25,6 +25,9 @@ const short VERSION = 1;
 #include <RTCZero.h>
 #include <SimpleDHT.h>
 #include <avr/dtostrf.h>
+
+#include <Arduino_LSM6DS3.h>
+
 /*  You need to go into this file and change this line from:
       #define MQTT_MAX_PACKET_SIZE 128
     to:
@@ -81,6 +84,7 @@ long lastSensorReadMillis = 0;
 
 float tempValue = 0.0;
 float humidityValue = 0.0;
+float x, y, z;
 int dieNumberValue = 1;
 
 // MQTT publish topics
@@ -292,6 +296,16 @@ void readSensors() {
     tempValue = random(0, 7500) / 100.0;
     humidityValue = random(0, 9999) / 100.0;
     #endif
+
+    if (IMU.accelerationAvailable()) {
+          IMU.readAcceleration(x, y, z);
+  
+          Serial.print(x);
+          Serial.print('\t');
+          Serial.print(y);
+          Serial.print('\t');
+          Serial.println(z);
+    }
 }
 
 void handleSketchDownload() {
@@ -373,6 +387,10 @@ void setup() {
 
     // seed pseudo-random number generator for die roll and simulated sensor values
     randomSeed(millis());
+
+    if (!IMU.begin()){
+      Serial.println("Failed to initialize IMU!");
+    }
 
     if (atecc.begin() == true)
     {
