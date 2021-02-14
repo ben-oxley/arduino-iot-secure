@@ -65,8 +65,18 @@ jobs:
           
       - name: Create dummy secrets file
         run: cp ./src/secrets.default.h ./src/secrets.h
+      
+      - name: Create build folder
+        run: mkdir ./build
  
       # Finally, we compile the sketch, using the FQBN that was set
       # in the build matrix.
       - name: Compile Sketch
-        run: arduino-cli compile --fqbn ${{ matrix.fqbn }} ./src
+        run: arduino-cli compile --build-path $PWD/build -v --fqbn ${{ matrix.fqbn }} ./src
+        
+      - name: Archive production artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: dist
+          path: |
+            ./build
