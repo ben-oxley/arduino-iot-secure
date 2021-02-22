@@ -395,7 +395,7 @@ void setup() {
     Serial.begin(115200);
 
     // uncomment this line to add a small delay to allow time for connecting serial moitor to get full debug output
-    // delay(5000); 
+    delay(5000); 
  
     Serial_printf((char*)F("Hello, starting up the %s device\n"), DEVICE_NAME);
 
@@ -425,6 +425,9 @@ void setup() {
         Serial_printf((char*)F("Attempting to connect to Wi-Fi SSID: %s \n"), wifi_ssid);
         // Connect to WPA/WPA2 network. Change this line if using open or WEP network:
         status = WiFi.begin(wifi_ssid, wifi_password);
+        if (status == WL_CONNECTED) {
+          Serial_printf((char*)F("Connected to Wi-Fi SSID: %s \n"), wifi_ssid);
+        }
         delay(1000);
     }
 
@@ -497,9 +500,12 @@ void loop() {
         String topic = (String)IOT_EVENT_TOPIC;
         topic.replace(F("{device_id}"), deviceId);
         char buff[10];
-        String payload = F("{\"temp\": {temp}, \"humidity\": {humidity}}");
+        String payload = F("{\"temp\": {temp}, \"humidity\": {humidity}, \"acc\":{\"x\":{accx},\"y\": {accy}, \"z\": {accz}}}");
         payload.replace(F("{temp}"), dtostrf(tempValue, 7, 2, buff));
         payload.replace(F("{humidity}"), dtostrf(humidityValue, 7, 2, buff));
+        payload.replace(F("{accx}"), dtostrf(x, 7, 2, buff));
+        payload.replace(F("{accy}"), dtostrf(y, 7, 2, buff));
+        payload.replace(F("{accz}"), dtostrf(z, 7, 2, buff));
         Serial_printf("\t%s\n", payload.c_str());
         mqtt_client->publish(topic.c_str(), payload.c_str());
 
