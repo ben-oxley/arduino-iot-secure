@@ -11,6 +11,14 @@ const short VERSION = 1;
 #include <time.h>
 #include <SPI.h>
 
+#include <FastLED.h>
+// How many leds in your strip?
+#define NUM_LEDS 16
+#define DATA_PIN 4
+// Define the array of leds
+CRGB leds[NUM_LEDS];
+uint8_t gHue = 0; // rotating "base color" used by many of the patterns
+
 // are we compiling against the Arduino MKR1000
 #if defined(ARDUINO_SAMD_MKR1000) && !defined(WIFI_101)
   #include <WiFi101.h>
@@ -20,12 +28,23 @@ const short VERSION = 1;
 // are we compiling against the Arduino MKR1010
 #ifdef ARDUINO_SAMD_MKRWIFI1010
   #include <WiFiNINA.h>
+  #include <WiFiUdp.h>
   #define DEVICE_NAME "Arduino MKR1010"
 #endif
 
 #ifdef ARDUINO_SAMD_NANO_33_IOT
   #include <WiFiNINA.h>
+  #include <WiFiUdp.h>
   #define DEVICE_NAME "Arduino Nano 33 IOT"
+#endif
+
+#ifdef ESP32_POE
+  #include <ETH.h>
+  #include "Wifi.h"
+  #include "AsyncUDP.h"
+  #define ETH_CLK_MODE ETH_CLOCK_GPIO17_OUT
+  #define ETH_PHY_POWER 12
+  #define DEVICE_NAME "ESP32 POE"
 #endif
 
 #include <ArduinoOTA.h>
@@ -35,7 +54,7 @@ const short VERSION = 1;
 
 #include <SparkFun_ATECCX08a_Arduino_Library.h>
 
-#include <WiFiUdp.h>
+
 #include <RTCZero.h>
 #include <SimpleDHT.h>
 #include <avr/dtostrf.h>
@@ -164,6 +183,7 @@ void handleDirectMethod(String topicStr, String payloadStr) {
     String methodName = topicStr.substring(topicStr.indexOf(F("$IOTHUB/METHODS/POST/")) + 21, topicStr.indexOf("/?$"));
     Serial_printf((char*)F("Direct method call:\n\tMethod Name: %s\n\tParameters: %s\n"), methodName.c_str(), payloadStr.c_str());
     if (strcmp(methodName.c_str(), "ECHO") == 0) {
+       Serial.println("Echo method");
         // acknowledge receipt of the command
         String response_topic = (String)IOT_DIRECT_METHOD_RESPONSE_TOPIC;
         char buff[20];
@@ -175,12 +195,33 @@ void handleDirectMethod(String topicStr, String payloadStr) {
         JSON_Value *root_value = json_parse_string(payloadStr.c_str());
         JSON_Object *root_obj = json_value_get_object(root_value);
         const char* msg = json_object_get_string(root_obj, "displayedValue");
+        if (strcmp(payloadStr.c_str(), "\"ON\"") == 0){
+                rainbow();
+  FastLED.show();
+        }
+           if (strcmp(payloadStr.c_str(), "\"OFF\"") == 0){
+               allBlack();
+  FastLED.show();
+        }
         morse_encodeAndFlash(msg);
         json_value_free(root_value);
     }
+ 
     if (strcmp(methodName.c_str(), "UPDATE") == 0){
       handleSketchDownload();
     }
+}
+void rainbow(){
+  // FastLED's built-in rainbow generator
+  fill_rainbow( leds, NUM_LEDS, gHue, 7);
+   
+}
+
+void allBlack(){
+  for (int i = 0; i < 16; i++){
+    leds[i] = CRGB::Black;
+  }
+   
 }
 
 void handleCloud2DeviceMessage(String topicStr, String payloadStr) {
@@ -431,8 +472,14 @@ void setup() {
         delay(1000);
     }
 
+    FastLED.addLeds<NEOPIXEL, DATA_PIN>(leds, NUM_LEDS);  // GRB ordering is assumed
+
+    leds[0] = CRGB::Black;
+    FastLED.show();
+
     // start the WiFi OTA library with internal (flash) based storage
     ArduinoOTA.begin(WiFi.localIP(), "Arduino", "password", InternalStorage);
+    
 
 
     // get current UTC time
