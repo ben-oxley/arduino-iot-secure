@@ -1,5 +1,9 @@
 #include <string.h>
+#ifdef ARDUINO_ARCH_AVR
 #include <avr/pgmspace.h>
+#else
+#include <pgmspace.h>
+#endif
 
 #include "sha256.h"
 

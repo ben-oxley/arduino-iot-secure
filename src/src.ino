@@ -19,45 +19,22 @@ const short VERSION = 1;
 CRGB leds[NUM_LEDS];
 uint8_t gHue = 0; // rotating "base color" used by many of the patterns
 
-// are we compiling against the Arduino MKR1000
-#if defined(ARDUINO_SAMD_MKR1000) && !defined(WIFI_101)
-  #include <WiFi101.h>
-  #define DEVICE_NAME "Arduino MKR1000"
-#endif
-
-// are we compiling against the Arduino MKR1010
-#ifdef ARDUINO_SAMD_MKRWIFI1010
-  #include <WiFiNINA.h>
-  #include <WiFiUdp.h>
-  #define DEVICE_NAME "Arduino MKR1010"
-#endif
-
-#ifdef ARDUINO_SAMD_NANO_33_IOT
-  #include <WiFiNINA.h>
-  #include <WiFiUdp.h>
-  #define DEVICE_NAME "Arduino Nano 33 IOT"
-#endif
-
-#ifdef ESP32_POE
-  #include <ETH.h>
-  #include "Wifi.h"
-  #include "AsyncUDP.h"
-  #define ETH_CLK_MODE ETH_CLOCK_GPIO17_OUT
-  #define ETH_PHY_POWER 12
-  #define DEVICE_NAME "ESP32 POE"
-#endif
-
-#include <ArduinoOTA.h>
 #include "secrets.h" 
 
-#include <ArduinoHttpClient.h>
-
+#include "network.h"
+//Must be defined after network.h
+#include <ArduinoOTA.h>
 #include <SparkFun_ATECCX08a_Arduino_Library.h>
 
 
 #include <RTCZero.h>
 #include <SimpleDHT.h>
-#include <avr/dtostrf.h>
+#ifdef ESP32-POE
+  #include <stdlib_noniso.h>
+#else
+  #include <avr/dtostrf.h>
+#endif
+
 
 #include <Arduino_LSM6DS3.h>
 
@@ -97,7 +74,6 @@ String iothubHost;
 String deviceId;
 String sharedAccessKey;
 
-WiFiSSLClient wifiClient;
 PubSubClient *mqtt_client = NULL;
 
 bool timeSet = false;
@@ -134,11 +110,10 @@ static const char PROGMEM IOT_DIRECT_MESSAGE_TOPIC[] = "$iothub/methods/POST/#";
 
 int requestId = 0;
 int twinRequestId = -1;
+NetworkClient adapter;
 
-// create a WiFi UDP object for NTP to use
-WiFiUDP wifiUdp;
 // create an NTP object
-NTP ntp(wifiUdp);
+NTP ntp(adapter.getUdpClient());
 // Create an rtc object
 RTCZero rtc;
 
@@ -477,11 +452,9 @@ void setup() {
     leds[0] = CRGB::Black;
     FastLED.show();
 
-    // start the WiFi OTA library with internal (flash) based storage
-    ArduinoOTA.begin(WiFi.localIP(), "Arduino", "password", InternalStorage);
+     // start the WiFi OTA library with internal (flash) based storage
+    ArduinoOTA.begin(adapter.localIP(), "Arduino", "password", InternalStorage);
     
-
-
     // get current UTC time
     getTime();
 
@@ -500,8 +473,8 @@ void setup() {
     String username = iothubHost + "/" + deviceId + (char*)F("/api-version=2016-11-14");
 
     // connect to the IoT Hub MQTT broker
-    wifiClient.connect(iothubHost.c_str(), 8883);
-    mqtt_client = new PubSubClient(iothubHost.c_str(), 8883, wifiClient);
+    adapter.getNetworkClient().connect(iothubHost.c_str(), 8883);
+    mqtt_client = new PubSubClient(iothubHost.c_str(), 8883, adapter.getNetworkClient());
     connectMQTT(deviceId, username, sasToken);
     mqtt_client->setCallback(callback);
 
