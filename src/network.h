@@ -29,12 +29,16 @@
 #endif
 #include <ArduinoHttpClient.h>
 
+
+
 class NetworkClient {
 
   public:
     NetworkClient();
     IPAddress localIP() const;
     Client& getNetworkClient();
+    HttpClient& getHttpClient();
     UDP& getUdpClient();
+    void connectToWifi();
 
 };

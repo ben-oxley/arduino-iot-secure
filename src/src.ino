@@ -7,6 +7,11 @@
 
 const short VERSION = 1;
 
+const char* PATH = "/update-v%d.bin";       // Set the URI to the .bin firmware
+const unsigned long CHECK_INTERVAL = 6000;  // Time interval between update checks (ms)
+
+
+
 #include <stdarg.h>
 #include <time.h>
 #include <SPI.h>
@@ -23,21 +28,22 @@ uint8_t gHue = 0; // rotating "base color" used by many of the patterns
 
 #include "network.h"
 //Must be defined after network.h
-#include <ArduinoOTA.h>
+//#include "OTA/ArduinoOTA.h"
 #include <SparkFun_ATECCX08a_Arduino_Library.h>
 
 
-#include <RTCZero.h>
+
 #include <SimpleDHT.h>
-#ifdef ESP32-POE
-  #include <stdlib_noniso.h>
-#else
+#ifdef SAMD_SERIES
+  #include <RTCZero.h>
   #include <avr/dtostrf.h>
+#else
+    #include <stdlib_noniso.h>
 #endif
 
-
+#ifdef ARDUINO_SAMD_NANO_33_IOT
 #include <Arduino_LSM6DS3.h>
-
+#endif
 /*  You need to go into this file and change this line from:
       #define MQTT_MAX_PACKET_SIZE 128
     to:
@@ -53,7 +59,7 @@ uint8_t gHue = 0; // rotating "base color" used by many of the patterns
 #include "./sha256.h"
 #include "./base64.h"
 #include "./parson.h"
-#include "./morse_code.h"
+
 #include "./utils.h"
 
 int getHubHostName(char *scopeId, char* deviceId, char* key, char *hostName);
@@ -83,10 +89,6 @@ bool mqttConnected = false;
 time_t this_second = 0;
 time_t checkTime = 1300000000;
 
-#define TELEMETRY_SEND_INTERVAL 5000  // telemetry data sent every 5 seconds
-#define PROPERTY_SEND_INTERVAL  15000 // property data sent every 15 seconds
-#define SENSOR_READ_INTERVAL  2500    // read sensors every 2.5 seconds
-
 long lastTelemetryMillis = 0;
 long lastPropertyMillis = 0;
 long lastSensorReadMillis = 0;
@@ -96,17 +98,6 @@ float humidityValue = 0.0;
 float x, y, z;
 int dieNumberValue = 1;
 
-// MQTT publish topics
-static const char PROGMEM IOT_EVENT_TOPIC[] = "devices/{device_id}/messages/events/";
-static const char PROGMEM IOT_TWIN_REPORTED_PROPERTY[] = "$iothub/twin/PATCH/properties/reported/?$rid={request_id}";
-static const char PROGMEM IOT_TWIN_REQUEST_TWIN_TOPIC[] = "$iothub/twin/GET/?$rid={request_id}";
-static const char PROGMEM IOT_DIRECT_METHOD_RESPONSE_TOPIC[] = "$iothub/methods/res/{status}/?$rid={request_id}";
-
-// MQTT subscribe topics
-static const char PROGMEM IOT_TWIN_RESULT_TOPIC[] = "$iothub/twin/res/#";
-static const char PROGMEM IOT_TWIN_DESIRED_PATCH_TOPIC[] = "$iothub/twin/PATCH/properties/desired/#";
-static const char PROGMEM IOT_C2D_TOPIC[] = "devices/{device_id}/messages/devicebound/#";
-static const char PROGMEM IOT_DIRECT_MESSAGE_TOPIC[] = "$iothub/methods/POST/#";
 
 int requestId = 0;
 int twinRequestId = -1;
@@ -114,12 +105,10 @@ NetworkClient adapter;
 
 // create an NTP object
 NTP ntp(adapter.getUdpClient());
-// Create an rtc object
-RTCZero rtc;
-
-//TODO - Need to add appropriate SSL certs
-// WiFiClient    wifiClient;  // HTTP
-WiFiSSLClient wifiClientSSL;  // HTTPS
+#ifdef SAMD_SERIES
+  // Create an rtc object
+  RTCZero rtc;
+#endif
 
 ATECCX08A atecc;
 
@@ -134,9 +123,10 @@ void getTime() {
     Serial.print(F("Current time: "));
     Serial.print(ntp.formattedTime("%d. %B %Y - "));
     Serial.println(ntp.formattedTime("%A %T"));
-
+#ifdef SAMD_SERIES
     rtc.begin();
     rtc.setEpoch(ntp.epoch());
+#endif
     timeSet = true;
 }
 
@@ -178,12 +168,12 @@ void handleDirectMethod(String topicStr, String payloadStr) {
                allBlack();
   FastLED.show();
         }
-        morse_encodeAndFlash(msg);
+        //morse_encodeAndFlash(msg);
         json_value_free(root_value);
     }
  
     if (strcmp(methodName.c_str(), "UPDATE") == 0){
-      handleSketchDownload();
+      //handleSketchDownload();
     }
 }
 void rainbow(){
@@ -315,18 +305,18 @@ String createIotHubSASToken(char *key, String url, long expire){
 void readSensors() {
     dieNumberValue = random(1, 7);
 
-    #if defined DHT11_TYPE || defined DHT22_TYPE
+#if defined DHT11_TYPE || defined DHT22_TYPE
     int err = SimpleDHTErrSuccess;
     if ((err = dhtSensor.read2(&tempValue, &humidityValue, NULL)) != SimpleDHTErrSuccess) {
         Serial_printf("Read DHT sensor failed (Error:%d)", err); 
         tempValue = -999.99;
         humidityValue = -999.99;
     }
-    #else
+#else
     tempValue = random(0, 7500) / 100.0;
     humidityValue = random(0, 9999) / 100.0;
-    #endif
-
+#endif
+#ifdef ARDUINO_SAMD_NANO_33_IOT
     if (IMU.accelerationAvailable()) {
           IMU.readAcceleration(x, y, z);
   
@@ -336,76 +326,71 @@ void readSensors() {
           Serial.print('\t');
           Serial.println(z);
     }
+#endif
 }
 
-void handleSketchDownload() {
-  const char* SERVER = "www.my-hostname.it";  // Set your correct hostname
-  const unsigned short SERVER_PORT = 443;     // Commonly 80 (HTTP) | 443 (HTTPS)
-  const char* PATH = "/update-v%d.bin";       // Set the URI to the .bin firmware
-  const unsigned long CHECK_INTERVAL = 6000;  // Time interval between update checks (ms)
-
-  // Time interval check
-  static unsigned long previousMillis;
-  unsigned long currentMillis = millis();
-  if (currentMillis - previousMillis < CHECK_INTERVAL)
-    return;
-  previousMillis = currentMillis;
-
-  // HttpClient client(wifiClient, SERVER, SERVER_PORT);  // HTTP
-  HttpClient client(wifiClientSSL, SERVER, SERVER_PORT);  // HTTPS
-
-  char buff[32];
-  snprintf(buff, sizeof(buff), PATH, VERSION + 1);
-
-  Serial.print("Check for update file ");
-  Serial.println(buff);
-
-  // Make the GET request
-  client.get(buff);
-
-  int statusCode = client.responseStatusCode();
-  Serial.print("Update status code: ");
-  Serial.println(statusCode);
-  if (statusCode != 200) {
-    client.stop();
-    return;
-  }
-
-  long length = client.contentLength();
-  if (length == HttpClient::kNoContentLengthHeader) {
-    client.stop();
-    Serial.println("Server didn't provide Content-length header. Can't continue with update.");
-    return;
-  }
-  Serial.print("Server returned update file of size ");
-  Serial.print(length);
-  Serial.println(" bytes");
-
-  if (!InternalStorage.open(length)) {
-    client.stop();
-    Serial.println("There is not enough space to store the update. Can't continue with update.");
-    return;
-  }
-  byte b;
-  while (length > 0) {
-    if (!client.readBytes(&b, 1)) // reading a byte with timeout
-      break;
-    InternalStorage.write(b);
-    length--;
-  }
-  InternalStorage.close();
-  client.stop();
-  if (length > 0) {
-    Serial.print("Timeout downloading update file at ");
-    Serial.print(length);
-    Serial.println(" bytes. Can't continue with update.");
-    return;
-  }
-
-  Serial.println("Sketch update apply and reset.");
-  Serial.flush();
-  InternalStorage.apply(); // this doesn't return
-}
+//void handleSketchDownload() {
+// 
+//
+//  // Time interval check
+//  static unsigned long previousMillis;
+//  unsigned long currentMillis = millis();
+//  if (currentMillis - previousMillis < CHECK_INTERVAL)
+//    return;
+//  previousMillis = currentMillis;
+//
+//  char buff[32];
+//  snprintf(buff, sizeof(buff), PATH, VERSION + 1);
+//
+//  Serial.print("Check for update file ");
+//  Serial.println(buff);
+//  HttpClient client = adapter.getHttpClient();
+//  // Make the GET request
+//  client.get(buff);
+//
+//  int statusCode = client.responseStatusCode();
+//  Serial.print("Update status code: ");
+//  Serial.println(statusCode);
+//  if (statusCode != 200) {
+//    client.stop();
+//    return;
+//  }
+//
+//  long length = client.contentLength();
+//  if (length == HttpClient::kNoContentLengthHeader) {
+//    client.stop();
+//    Serial.println("Server didn't provide Content-length header. Can't continue with update.");
+//    return;
+//  }
+//  Serial.print("Server returned update file of size ");
+//  Serial.print(length);
+//  Serial.println(" bytes");
+//
+//  if (!InternalStorage.open(length)) {
+//    client.stop();
+//    Serial.println("There is not enough space to store the update. Can't continue with update.");
+//    return;
+//  }
+//  byte b;
+//  while (length > 0) {
+//    if (!client.readBytes(&b, 1)) // reading a byte with timeout
+//      break;
+//    InternalStorage.write(b);
+//    length--;
+//  }
+//  InternalStorage.close();
+//  client.stop();
+//  if (length > 0) {
+//    Serial.print("Timeout downloading update file at ");
+//    Serial.print(length);
+//    Serial.println(" bytes. Can't continue with update.");
+//    return;
+//  }
+//
+//  Serial.println("Sketch update apply and reset.");
+//  Serial.flush();
+//  InternalStorage.apply(); // this doesn't return
+//}
 
 void setup() {
     Serial.begin(115200);
@@ -417,10 +402,11 @@ void setup() {
 
     // seed pseudo-random number generator for die roll and simulated sensor values
     randomSeed(millis());
-
+#ifdef ARDUINO_SAMD_NANO_33_IOT
     if (!IMU.begin()){
       Serial.println("Failed to initialize IMU!");
     }
+#endif
 
     if (atecc.begin() == true)
     {
@@ -433,19 +419,7 @@ void setup() {
       Serial.print("Device not configured. Please configure the ATECC608.");
     }
 
-    // attempt to connect to Wifi network:
-    Serial.print((char*)F("WiFi Firmware version is "));
-    Serial.println(WiFi.firmwareVersion());
-    int status = WL_IDLE_STATUS;
-    while ( status != WL_CONNECTED) {
-        Serial_printf((char*)F("Attempting to connect to Wi-Fi SSID: %s \n"), wifi_ssid);
-        // Connect to WPA/WPA2 network. Change this line if using open or WEP network:
-        status = WiFi.begin(wifi_ssid, wifi_password);
-        if (status == WL_CONNECTED) {
-          Serial_printf((char*)F("Connected to Wi-Fi SSID: %s \n"), wifi_ssid);
-        }
-        delay(1000);
-    }
+    adapter.connectToWifi();
 
     FastLED.addLeds<NEOPIXEL, DATA_PIN>(leds, NUM_LEDS);  // GRB ordering is assumed
 
@@ -453,7 +427,7 @@ void setup() {
     FastLED.show();
 
      // start the WiFi OTA library with internal (flash) based storage
-    ArduinoOTA.begin(adapter.localIP(), "Arduino", "password", InternalStorage);
+    //ArduinoOTA.begin(adapter.localIP(), "Arduino", "password", InternalStorage);
     
     // get current UTC time
     getTime();
@@ -468,7 +442,13 @@ void setup() {
     // create SAS token and user name for connecting to MQTT broker
     String url = iothubHost + urlEncode(String((char*)F("/devices/") + deviceId).c_str());
     char *devKey = (char *)sharedAccessKey.c_str();
+#ifdef SAMD_SERIES
     long expire = rtc.getEpoch() + 864000;
+#else
+    ntp.update();
+    long expire = ntp.epoch() + 864000;
+#endif
+
     String sasToken = createIotHubSASToken(devKey, url, expire);
     String username = iothubHost + "/" + deviceId + (char*)F("/api-version=2016-11-14");
 

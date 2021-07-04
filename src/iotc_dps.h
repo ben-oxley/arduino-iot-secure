@@ -5,7 +5,13 @@
 #define AUTH_BUFFER_SIZE 256
 
 int getDPSAuthString(char* scopeId, char* deviceId, char* key, char *buffer, int bufferSize, size_t &outLength) {
-  unsigned long expiresSecond = rtc.getEpoch() + 7200;
+ 
+#ifdef SAMD_SERIES
+     unsigned long expiresSecond = rtc.getEpoch() + 7200;
+#else
+    ntp.update();
+    unsigned long expiresSecond = ntp.epoch() + 7200;
+#endif
   assert(expiresSecond > 7200);
 
   String deviceIdEncoded = urlEncode(deviceId);
@@ -39,7 +45,7 @@ int getDPSAuthString(char* scopeId, char* deviceId, char* key, char *buffer, int
 }
 
 int _getOperationId(char* scopeId, char* deviceId, char* authHeader, char *operationId) {
-  WiFiSSLClient client;
+  Client& client = adapter.getNetworkClient();
   if (client.connect(AZURE_IOT_CENTRAL_DPS_ENDPOINT, 443)) {
     char tmpBuffer[TEMP_BUFFER_SIZE] = {0};
     String deviceIdEncoded = urlEncode(deviceId);
@@ -98,7 +104,7 @@ error_exit:
 }
 
 int _getHostName(char *scopeId, char*deviceId, char *authHeader, char*operationId, char* hostName) {
-  WiFiSSLClient client;
+  Client& client = adapter.getNetworkClient();
   if (!client.connect(AZURE_IOT_CENTRAL_DPS_ENDPOINT, 443)) {
     Serial.println("ERROR: DPS endpoint GET call has failed.");
     return 1;
