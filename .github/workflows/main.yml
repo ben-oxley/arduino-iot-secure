@@ -31,8 +31,8 @@ jobs:
           # variable fqbn is set to "arduino:samd:nano_33_iot".
           - arduino-platform: "arduino:samd"
             fqbn: "arduino:samd:nano_33_iot"
-           - arduino-platform: "arduino:esp32"
-            fqbn: "arduino:esp32:esp32-poe"
+          - arduino-platform: "arduino:esp32"
+          fqbn: "arduino:esp32:esp32-poe"
  
     # This is the platform GitHub will use to run our workflow, we
     # pick Windows for no particular reason.
