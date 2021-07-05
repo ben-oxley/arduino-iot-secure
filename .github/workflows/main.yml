@@ -76,6 +76,9 @@ jobs:
       
       - name: Create build folder
         run: mkdir ./build
+        
+      - name: Copy ESP32 Partitions file
+        run: cp ./src/partitions.csv ./build/partitions.csv
  
       # Finally, we compile the sketch, using the FQBN that was set
       # in the build matrix.
