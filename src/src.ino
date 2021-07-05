@@ -123,7 +123,7 @@ void getTime() {
     Serial.print(F("Current time: "));
     Serial.print(ntp.formattedTime("%d. %B %Y - "));
     Serial.println(ntp.formattedTime("%A %T"));
-#ifdef SAMD_SERIES
+#ifdef ARDUINO_SAMD_NANO_33_IOT
     rtc.begin();
     rtc.setEpoch(ntp.epoch());
 #endif
@@ -442,7 +442,7 @@ void setup() {
     // create SAS token and user name for connecting to MQTT broker
     String url = iothubHost + urlEncode(String((char*)F("/devices/") + deviceId).c_str());
     char *devKey = (char *)sharedAccessKey.c_str();
-#ifdef SAMD_SERIES
+#ifdef ARDUINO_SAMD_NANO_33_IOT
     long expire = rtc.getEpoch() + 864000;
 #else
     ntp.update();
