@@ -105,7 +105,7 @@ NetworkClient adapter;
 
 // create an NTP object
 NTP ntp(adapter.getUdpClient());
-#ifdef SAMD_SERIES
+#ifdef ARDUINO_SAMD_NANO_33_IOT
   // Create an rtc object
   RTCZero rtc;
 #endif
