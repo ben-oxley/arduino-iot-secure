@@ -54,7 +54,7 @@ jobs:
       - name: Install platform
         run: |
           arduino-cli core update-index --additional-urls https://dl.espressif.com/dl/package_esp32_index.json
-          arduino-cli core install ${{ matrix.arduino-platform }}
+          arduino-cli core install ${{ matrix.arduino-platform }} --additional-urls https://dl.espressif.com/dl/package_esp32_index.json
           arduino-cli lib install ArduinoHttpClient
           arduino-cli lib install RTCZero
           arduino-cli lib install SD
