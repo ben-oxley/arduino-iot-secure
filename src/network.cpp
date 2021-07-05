@@ -55,3 +55,14 @@ void NetworkClient::connectToWifi(){
       }
     #endif
 }
+
+// implementation of printf for use in Arduino sketch
+void Serial_printf(char* fmt, ...) {
+    char buf[256]; // resulting string limited to 128 chars
+    va_list args;
+    va_start (args, fmt );
+    vsnprintf(buf, 256, fmt, args);
+    va_end (args);
+    Serial.print(buf);
+}
+
