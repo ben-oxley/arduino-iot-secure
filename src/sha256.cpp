@@ -1,5 +1,5 @@
 #include <string.h>
-#ifdef ARDUINO_ARCH_AVR
+#ifdef ARDUINO_SAMD_NANO_33_IOT //change for samd generic define
 #include <avr/pgmspace.h>
 #else
 #include <pgmspace.h>
