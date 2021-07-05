@@ -34,7 +34,7 @@ uint8_t gHue = 0; // rotating "base color" used by many of the patterns
 
 
 #include <SimpleDHT.h>
-#ifdef SAMD_SERIES
+#ifdef ARDUINO_ARCH_AVR
   #include <RTCZero.h>
   #include <avr/dtostrf.h>
 #else
