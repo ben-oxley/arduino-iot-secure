@@ -40,29 +40,19 @@ IPAddress NetworkClient::localIP() const
 
 void NetworkClient::connectToWifi(){
       // attempt to connect to Wifi network:
-    Serial.print((char*)F("WiFi Firmware version is "));
+    //Serial.print((char*)F("WiFi Firmware version is "));
     #ifndef ESP32-POE
-      Serial.println(WiFi.firmwareVersion());
+      //Serial.println(WiFi.firmwareVersion());
       int status = WL_IDLE_STATUS;
       while ( status != WL_CONNECTED) {
-          Serial_printf((char*)F("Attempting to connect to Wi-Fi SSID: %s \n"), wifi_ssid);
+          //Serial_printf((char*)F("Attempting to connect to Wi-Fi SSID: %s \n"), wifi_ssid);
           // Connect to WPA/WPA2 network. Change this line if using open or WEP network:
           status = WiFi.begin(wifi_ssid, wifi_password);
           if (status == WL_CONNECTED) {
-            Serial_printf((char*)F("Connected to Wi-Fi SSID: %s \n"), wifi_ssid);
+            //Serial_printf((char*)F("Connected to Wi-Fi SSID: %s \n"), wifi_ssid);
           }
           delay(1000);
       }
     #endif
-}
-
-// implementation of printf for use in Arduino sketch
-void Serial_printf(char* fmt, ...) {
-    char buf[256]; // resulting string limited to 128 chars
-    va_list args;
-    va_start (args, fmt );
-    vsnprintf(buf, 256, fmt, args);
-    va_end (args);
-    Serial.print(buf);
 }
 
