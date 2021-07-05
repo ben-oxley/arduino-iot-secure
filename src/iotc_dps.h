@@ -6,7 +6,7 @@
 
 int getDPSAuthString(char* scopeId, char* deviceId, char* key, char *buffer, int bufferSize, size_t &outLength) {
  
-#ifdef ARDUINO_ARCH_AVR
+#ifdef ARDUINO_SAMD_NANO_33_IOT //change for samd generic define
      unsigned long expiresSecond = rtc.getEpoch() + 7200;
 #else
     ntp.update();
