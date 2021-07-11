@@ -1,8 +1,8 @@
 #include <string.h>
 #ifdef ARDUINO_ARCH_SAMD //change for samd generic define
-#include <avr/pgmspace.h>
-#else
-#include <pgmspace.h>
+  #include <avr/pgmspace.h>
+#elif ESP_PLATFORM
+  #include <pgmspace.h>
 #endif
 
 #include "sha256.h"

@@ -16,13 +16,15 @@ const unsigned long CHECK_INTERVAL = 6000;  // Time interval between update chec
 #include <time.h>
 #include <SPI.h>
 
-#include <FastLED.h>
-// How many leds in your strip?
-#define NUM_LEDS 16
-#define DATA_PIN 4
-// Define the array of leds
-CRGB leds[NUM_LEDS];
-uint8_t gHue = 0; // rotating "base color" used by many of the patterns
+#ifndef ARDUINO_ARCH_RP2040
+  #include <FastLED.h>
+  // How many leds in your strip?
+  #define NUM_LEDS 16
+  #define DATA_PIN 4
+  // Define the array of leds
+  CRGB leds[NUM_LEDS];
+  uint8_t gHue = 0; // rotating "base color" used by many of the patterns
+#endif
 
 #include "secrets.h" 
 
@@ -37,8 +39,10 @@ uint8_t gHue = 0; // rotating "base color" used by many of the patterns
 #ifdef ARDUINO_ARCH_SAMD //change for samd generic define
   #include <RTCZero.h>
   #include <avr/dtostrf.h>
-#else
+#elif ESP_PLATFORM
     #include <stdlib_noniso.h>
+#elif ARDUINO_ARCH_RP2040
+    #include <api/deprecated-avr-comp/avr/dtostrf.c.impl>
 #endif
 
 #ifdef ARDUINO_ARCH_SAMD
@@ -160,14 +164,16 @@ void handleDirectMethod(String topicStr, String payloadStr) {
         JSON_Value *root_value = json_parse_string(payloadStr.c_str());
         JSON_Object *root_obj = json_value_get_object(root_value);
         const char* msg = json_object_get_string(root_obj, "displayedValue");
+#ifndef ARDUINO_ARCH_RP2040
         if (strcmp(payloadStr.c_str(), "\"ON\"") == 0){
                 rainbow();
-  FastLED.show();
+                FastLED.show();
         }
-           if (strcmp(payloadStr.c_str(), "\"OFF\"") == 0){
+        if (strcmp(payloadStr.c_str(), "\"OFF\"") == 0){
                allBlack();
-  FastLED.show();
+              FastLED.show();
         }
+#endif
         //morse_encodeAndFlash(msg);
         json_value_free(root_value);
     }
@@ -176,6 +182,8 @@ void handleDirectMethod(String topicStr, String payloadStr) {
       //handleSketchDownload();
     }
 }
+
+#ifndef ARDUINO_ARCH_RP2040
 void rainbow(){
   // FastLED's built-in rainbow generator
   fill_rainbow( leds, NUM_LEDS, gHue, 7);
@@ -188,6 +196,7 @@ void allBlack(){
   }
    
 }
+#endif
 
 void handleCloud2DeviceMessage(String topicStr, String payloadStr) {
     Serial_printf((char*)F("Cloud to device call:\n\tPayload: %s\n"), payloadStr.c_str());
@@ -441,12 +450,12 @@ void setup() {
     }
 
     adapter.connectToWifi();
-
+#ifndef ARDUINO_ARCH_RP2040
     FastLED.addLeds<NEOPIXEL, DATA_PIN>(leds, NUM_LEDS);  // GRB ordering is assumed
 
     leds[0] = CRGB::Black;
     FastLED.show();
-
+#endif
      // start the WiFi OTA library with internal (flash) based storage
     //ArduinoOTA.begin(adapter.localIP(), "Arduino", "password", InternalStorage);
     
