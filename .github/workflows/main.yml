@@ -20,7 +20,8 @@ jobs:
         # The matrix will produce one job for each configuration
         # parameter of type arduino-platform, in this case a
         # total of 2.
-        arduino-platform: ["arduino:samd"]
+        arduino-platform: ["arduino:samd","arduino:samd","esp32:esp32"]
+        #,"arduino:mbed_nano"] No support for rp2040 yet due to no pgmspace library
         # This is usually optional but we need to statically define the
         # FQBN of the boards we want to test for each platform. In the
         # future the CLI might automatically detect and download the core
@@ -31,6 +32,12 @@ jobs:
           # variable fqbn is set to "arduino:samd:nano_33_iot".
           - arduino-platform: "arduino:samd"
             fqbn: "arduino:samd:nano_33_iot"
+          - arduino-platform: "arduino:samd"
+            fqbn: "arduino:samd:mkrwifi1010"
+          - arduino-platform: "esp32:esp32"
+            fqbn: "esp32:esp32:esp32-poe"
+          #- arduino-platform: "arduino:mbed" No support for rp2040 yet due to no pgmspace library
+          #  fqbn: "arduino:mbed_nano:nanorp2040connect" No support for rp2040 yet due to no pgmspace library
  
     # This is the platform GitHub will use to run our workflow, we
     # pick Windows for no particular reason.
@@ -51,8 +58,8 @@ jobs:
       # dynamically by the build matrix.
       - name: Install platform
         run: |
-          arduino-cli core update-index
-          arduino-cli core install ${{ matrix.arduino-platform }}
+          arduino-cli core update-index --additional-urls https://dl.espressif.com/dl/package_esp32_index.json
+          arduino-cli core install ${{ matrix.arduino-platform }} --additional-urls https://dl.espressif.com/dl/package_esp32_index.json
           arduino-cli lib install ArduinoHttpClient
           arduino-cli lib install RTCZero
           arduino-cli lib install SD
@@ -65,6 +72,7 @@ jobs:
           arduino-cli lib install "SparkFun ATECCX08a Arduino Library"
           arduino-cli lib install Arduino_LSM6DS3
           arduino-cli lib install FastLED
+          arduino-cli lib install JsonLogger
           
       - name: Configure MQTT Size
         run: ((Get-Content -path "~\Documents\Arduino\libraries\PubSubClient\src\PubSubClient.h" -Raw) -replace '#define MQTT_MAX_PACKET_SIZE 128','#define MQTT_MAX_PACKET_SIZE 2048') | Set-Content -Path "~\Documents\Arduino\libraries\PubSubClient\src\PubSubClient.h"
@@ -74,6 +82,9 @@ jobs:
       
       - name: Create build folder
         run: mkdir ./build
+        
+      - name: Copy ESP32 Partitions file
+        run: cp ./src/partitions.csv ./build/partitions.csv
  
       # Finally, we compile the sketch, using the FQBN that was set
       # in the build matrix.

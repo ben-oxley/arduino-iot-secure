@@ -1,5 +1,10 @@
 #include "Base64.h"
-#include <avr/pgmspace.h>
+#ifdef ARDUINO_ARCH_SAMD //change for samd generic define
+	#include <avr/pgmspace.h>
+#elif ESP_PLATFORM
+	#include <pgmspace.h>
+#endif
+
 const char PROGMEM b64_alphabet[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 		"abcdefghijklmnopqrstuvwxyz"
 		"0123456789+/";
