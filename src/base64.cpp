@@ -1,5 +1,5 @@
 #include "Base64.h"
-#ifdef ARDUINO_SAMD_NANO_33_IOT //change for samd generic define
+#ifdef ARDUINO_ARCH_SAMD //change for samd generic define
 	#include <avr/pgmspace.h>
 #else
 	#include <pgmspace.h>

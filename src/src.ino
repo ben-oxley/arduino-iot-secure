@@ -34,14 +34,14 @@ uint8_t gHue = 0; // rotating "base color" used by many of the patterns
 
 
 #include <SimpleDHT.h>
-#ifdef ARDUINO_SAMD_NANO_33_IOT //change for samd generic define
+#ifdef ARDUINO_ARCH_SAMD //change for samd generic define
   #include <RTCZero.h>
   #include <avr/dtostrf.h>
 #else
     #include <stdlib_noniso.h>
 #endif
 
-#ifdef ARDUINO_SAMD_NANO_33_IOT
+#ifdef ARDUINO_ARCH_SAMD
 #include <Arduino_LSM6DS3.h>
 #endif
 /*  You need to go into this file and change this line from:
@@ -105,7 +105,7 @@ NetworkClient adapter;
 
 // create an NTP object
 NTP ntp(adapter.getUdpClient());
-#ifdef ARDUINO_SAMD_NANO_33_IOT
+#ifdef ARDUINO_ARCH_SAMD
   // Create an rtc object
   RTCZero rtc;
 #endif
@@ -123,7 +123,7 @@ void getTime() {
     Serial.print(F("Current time: "));
     Serial.print(ntp.formattedTime("%d. %B %Y - "));
     Serial.println(ntp.formattedTime("%A %T"));
-#ifdef ARDUINO_SAMD_NANO_33_IOT
+#ifdef ARDUINO_ARCH_SAMD
     rtc.begin();
     rtc.setEpoch(ntp.epoch());
 #endif
@@ -316,7 +316,7 @@ void readSensors() {
     tempValue = random(0, 7500) / 100.0;
     humidityValue = random(0, 9999) / 100.0;
 #endif
-#ifdef ARDUINO_SAMD_NANO_33_IOT
+#ifdef ARDUINO_ARCH_SAMD
     if (IMU.accelerationAvailable()) {
           IMU.readAcceleration(x, y, z);
   
@@ -423,7 +423,7 @@ void setup() {
 
     // seed pseudo-random number generator for die roll and simulated sensor values
     randomSeed(millis());
-#ifdef ARDUINO_SAMD_NANO_33_IOT
+#ifdef ARDUINO_ARCH_SAMD
     if (!IMU.begin()){
       logError("Failed to initialize IMU!");
     }
@@ -463,7 +463,7 @@ void setup() {
     // create SAS token and user name for connecting to MQTT broker
     String url = iothubHost + urlEncode(String((char*)F("/devices/") + deviceId).c_str());
     char *devKey = (char *)sharedAccessKey.c_str();
-#ifdef ARDUINO_SAMD_NANO_33_IOT
+#ifdef ARDUINO_ARCH_SAMD
     long expire = rtc.getEpoch() + 864000;
 #else
     ntp.update();
