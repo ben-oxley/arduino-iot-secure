@@ -10,7 +10,7 @@ const short VERSION = 1;
 const char* PATH = "/update-v%d.bin";       // Set the URI to the .bin firmware
 const unsigned long CHECK_INTERVAL = 6000;  // Time interval between update checks (ms)
 
-
+#include "JsonLogger.h"
 
 #include <stdarg.h>
 #include <time.h>
@@ -392,8 +392,29 @@ void readSensors() {
 //  InternalStorage.apply(); // this doesn't return
 //}
 
+void to_console(int level, const char* json, int len) {
+  char mod[LOG_MAX_LEN];
+  memcpy(mod, json, len + 1);
+
+  logModifyForHuman(level, mod);
+
+  Serial.println(mod);
+}
+
+void to_mqtt(int level, const char* json, int len) {
+  if (level >= LEVEL_INFO) {
+    String topic = (String)IOT_EVENT_TOPIC;
+    topic.replace(F("{device_id}"), deviceId);
+    mqtt_client->publish(topic.c_str(), json);
+  }
+}
+
 void setup() {
+  
     Serial.begin(115200);
+
+    logAddSender(to_console);
+    logAddSender(to_mqtt);
 
     // uncomment this line to add a small delay to allow time for connecting serial moitor to get full debug output
     delay(5000); 
@@ -404,7 +425,7 @@ void setup() {
     randomSeed(millis());
 #ifdef ARDUINO_SAMD_NANO_33_IOT
     if (!IMU.begin()){
-      Serial.println("Failed to initialize IMU!");
+      logError("Failed to initialize IMU!");
     }
 #endif
 
